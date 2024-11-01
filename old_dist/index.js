@@ -1,4 +1,3 @@
-"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -8,12 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const fs_1 = require("fs");
-const path_1 = __importDefault(require("path"));
+import { promises as fs } from 'fs';
+import path from 'path';
 function validateAgainstModel(data, model) {
     if (Array.isArray(data)) {
         return data.every(item => validateAgainstModel(item, model));
@@ -33,16 +28,16 @@ function readJsonFile(filePath, defaultData) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             try {
-                yield fs_1.promises.access(filePath);
-                const data = yield fs_1.promises.readFile(filePath, 'utf8');
+                yield fs.access(filePath);
+                const data = yield fs.readFile(filePath, 'utf8');
                 // console.log( '1 DATA ', data );
                 return JSON.parse(data);
             }
             catch (_a) {
                 const jsonString = JSON.stringify(defaultData, null, 2);
-                const fPath = path_1.default.join('./', filePath);
-                const parsePath = path_1.default.parse(fPath);
-                yield fs_1.promises.writeFile(`${parsePath.dir}/${parsePath.base}`, jsonString, 'utf8');
+                const fPath = path.join('./', filePath);
+                const parsePath = path.parse(fPath);
+                yield fs.writeFile(`${parsePath.dir}/${parsePath.base}`, jsonString, 'utf8');
                 return defaultData;
             }
         }
@@ -69,7 +64,7 @@ function updateJsonFileProperty(filePath, propertyPath, newValue) {
             const finalKey = pathParts[pathParts.length - 1];
             currentObj[finalKey] = newValue;
             const jsonString = JSON.stringify(dataToUpdate, null, 2);
-            yield fs_1.promises.writeFile(filePath, jsonString, 'utf8');
+            yield fs.writeFile(filePath, jsonString, 'utf8');
             console.log('JSON file updated successfully');
             return true;
         }
@@ -83,7 +78,7 @@ function writeJsonFile(filePath, newData) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const jsonString = JSON.stringify(newData, null, 2);
-            yield fs_1.promises.writeFile(filePath, jsonString, 'utf8');
+            yield fs.writeFile(filePath, jsonString, 'utf8');
             console.log('JSON file updated successfully');
             return true;
         }
@@ -110,7 +105,7 @@ function deleteJsonProperty(filePath, propertyPath) {
             const finalKey = pathParts[pathParts.length - 1];
             delete currentObj[finalKey];
             const jsonString = JSON.stringify(dataToUpdate, null, 2);
-            yield fs_1.promises.writeFile(filePath, jsonString, 'utf8');
+            yield fs.writeFile(filePath, jsonString, 'utf8');
             console.log('JSON file updated successfully');
             return true;
         }
@@ -123,7 +118,7 @@ function deleteJsonProperty(filePath, propertyPath) {
 function deleteJsonFile(filePath) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            yield fs_1.promises.unlink(filePath);
+            yield fs.unlink(filePath);
             console.log('JSON file deleted successfully');
             return true;
         }
@@ -176,5 +171,5 @@ class Store {
         });
     }
 }
-exports.default = Store;
+export default Store;
 //# sourceMappingURL=index.js.map

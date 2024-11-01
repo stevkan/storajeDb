@@ -1,7 +1,7 @@
 interface Model {
     [key: string]: any;
 }
-declare class Store<T extends Model> {
+export declare class Store<T extends Model> {
     private filePath;
     private db;
     constructor(filePath: string, fileName: string, defaultData?: T);
@@ -11,4 +11,4 @@ declare class Store<T extends Model> {
     update(propertyPath: string, newValue: any): Promise<boolean>;
     write(newData: T): Promise<boolean>;
 }
-export default Store;
+export {};

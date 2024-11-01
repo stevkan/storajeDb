@@ -1,6 +1,6 @@
 {
   "name": "storaje-db",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A simple JSON-based storage solution for your data.",
   "type": "module",
   "main": "dist/index.js",
@@ -8,6 +8,12 @@
   "files": [
     "dist"
   ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",

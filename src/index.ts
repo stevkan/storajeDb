@@ -118,7 +118,7 @@ async function deleteJsonFile<T extends Model> ( filePath: string ): Promise<boo
     throw error;
   }
 }
-class Store<T extends Model> {
+export class Store<T extends Model> {
   private filePath: string;
   // private model: T;
   private db: Promise<T>;
@@ -159,5 +159,3 @@ class Store<T extends Model> {
     return await writeJsonFile<T>( this.filePath, newData ); //, this.model );
   }
 }
-
-export default Store;

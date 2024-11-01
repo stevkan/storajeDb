@@ -119,43 +119,53 @@ async function deleteJsonFile<T extends Model> ( filePath: string ): Promise<boo
   }
 }
 export class Store<T extends Model> {
-  private filePath: string;
-  // private model: T;
-  private db: Promise<T>;
+  #filePath: string;
+  #data: Promise<T>;
 
   constructor( filePath: string, fileName: string, defaultData: T = [] as unknown as T ) {
-    this.filePath = filePath + fileName;
-    // this.model = defaultData;
-    this.db = readJsonFile<T>( filePath + fileName, defaultData );
+    this.#filePath = filePath + fileName;
+    this.#data = readJsonFile<T>( this.#filePath, defaultData );
   }
 
   async delete ( propertyPath: string ): Promise<boolean> {
-    return await deleteJsonProperty<T>( this.filePath, propertyPath );
+    return await deleteJsonProperty<T>( this.#filePath, propertyPath );
   }
 
   async deleteFile (): Promise<boolean> {
-    return await deleteJsonFile<T>( this.filePath );
+    return await deleteJsonFile<T>( this.#filePath );
   }
 
   async read (): Promise<Readonly<T>> {
-    const data = await this.db;
-    let dataType;
-    if ( typeof data === 'object' ) {
-      dataType = {};
-    }
-    if ( Array.isArray( data ) ) {
-      dataType = [];
-    } else {
-      dataType = data;
-    }
-    return Object.assign( dataType, data);
+    const data = await this.#data;
+    // Create a deep copy to prevent mutations
+    return JSON.parse( JSON.stringify( data ) );
+    // let dataType;
+    // if ( typeof data === 'object' ) {
+    //   dataType = {};
+    // }
+    // if ( Array.isArray( data ) ) {
+    //   dataType = [];
+    // } else {
+    //   dataType = data;
+    // }
+    // return Object.assign( dataType, data);
   }
 
   async update ( propertyPath: string, newValue: any ): Promise<boolean> {
-    return await updateJsonFileProperty<T>( this.filePath, propertyPath, newValue ); //, this.model );
+    const result = await updateJsonFileProperty<T>( this.#filePath, propertyPath, newValue );
+    if ( result ) {
+      // Update internal cache
+      this.#data = readJsonFile<T>( this.#filePath, await this.#data );
+    }
+    return result;
   }
 
   async write ( newData: T ): Promise<boolean> {
-    return await writeJsonFile<T>( this.filePath, newData ); //, this.model );
+    const result = await writeJsonFile<T>( this.#filePath, newData );
+    if ( result ) {
+      // Update internal cache
+      this.#data = Promise.resolve( newData );
+    }
+    return result;
   }
 }

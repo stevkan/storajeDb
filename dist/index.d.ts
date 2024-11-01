@@ -2,8 +2,7 @@ interface Model {
     [key: string]: any;
 }
 export declare class Store<T extends Model> {
-    private filePath;
-    private db;
+    #private;
     constructor(filePath: string, fileName: string, defaultData?: T);
     delete(propertyPath: string): Promise<boolean>;
     deleteFile(): Promise<boolean>;

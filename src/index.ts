@@ -128,7 +128,12 @@ export class Store<T extends Model> {
   }
 
   async delete ( propertyPath: string ): Promise<boolean> {
-    return await deleteJsonProperty<T>( this.#filePath, propertyPath );
+    const result = await deleteJsonProperty<T>( this.#filePath, propertyPath );
+    if ( result ) {
+      // Update internal cache after deletion
+      this.#data = readJsonFile<T>( this.#filePath, await this.#data );
+    }
+    return result;
   }
 
   async deleteFile (): Promise<boolean> {

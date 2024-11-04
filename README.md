@@ -3,115 +3,191 @@ StorajeDB is a simple JSON-based storage system with model validation.
 
 ### Installation
 To use StorajeDB, you need to have Node.js installed on your machine. Then, you can install the package using npm:
-```ts
+```javascript
   npm install storaje-db
 ```
 
 ### Usage
 
-```typescript
+```javascript
 import Store from 'storaje-db';
 ```
 
-Define your data model. Including a data model is optional, but recommended for type checking and validation. Default data structure is an empty array. The model, if populated with any values, will serve as the default data structure.
-```typescript
+
+StorajeDB supports optional model validation. You can define a data model to ensure type checking and data validation. If no model is provided, the default data structure is an empty array.
+
+Define an optional data model (recommended):
+
+```javascript
 const myModel = {
-  id: '',
-  name: '',
-  age: 0
+  id: '',           // string type
+  name: '',         // string type
+  age: 0,          // number type
+  active: false,    // boolean type
+  tags: [],        // array type
+  details: {       // nested object
+    address: '',
+    phone: ''
+  }
 };
 ```
 
-Initialize store with file path and model. Creates file if it doesn't exist.
-```typescript
-const myStore = new Store('./path/to/store_location', 'file.json', myModel);
+Initialize store with or without a model:
+
+// With model validation
+```javascript
+const myStore = new Store('./path/to/file.json', myModel);
 ```
 
-Reads and returns data.
-```typescript
+// Without model validation (uses empty array as default)
+```javascript
+const basicStore = new Store('./path/to/file.json');
+```
+
+
+Read data:
+
+```javascript
 const getData = async () => {
   const data = await myStore.read();
   console.log(data);
 };
 ```
 
-Write data. Returns true if successful.
-```typescript
+
+Write data (validates against model if provided):
+
+```javascript
 const writeData = async () => {
   const newData = {
     id: '1',
     name: 'John',
-    age: 25
+    age: 25,
+    active: true,
+    tags: ['user', 'admin'],
+    details: {
+      address: '123 Main St',
+      phone: '555-0123'
+    }
   };
   await myStore.write(newData);
 };
 ```
 
-Update specific property. Returns true if successful.
-```typescript
-const updateProperty = async () => {
+Update specific properties:
+
+```javascript
+const updateProperties = async () => {
+  // Update single property
   await myStore.update('name', 'Jane');
-  // For nested properties use dot notation
-  await myStore.update('details.address', '123 Main St');
+  
+  // Update nested property
+  await myStore.update('details.address', '456 Oak St');
+  
+  // Update multiple properties at once
+  await myStore.update({
+    age: 26,
+    'details.phone': '555-4567'
+  });
 };
 ```
 
-Delete specific property. Returns true if successful.
-```typescript
-const deleteProperty = async () => {
-  await myStore.delete('age');
-  // For nested properties use dot notation
-  await myStore.delete('details.address');
+Delete properties:
+
+```javascript
+const deleteProperties = async () => {
+  // Delete single property
+  await myStore.delete('tags');
+  
+  // Delete nested property
+  await myStore.delete('details.phone');
+  
+  // Delete multiple properties at once
+  await myStore.delete(['age', 'details.address']);
 };
 ```
 
-Delete entire file. Returns true if successful.
-```typescript
-const deleteFile = async () => {
+Delete the store file:
+
+```javascript
+const deleteStore = async () => {
   await myStore.deleteFile();
 };
 ```
 
 The Store class provides the following methods:
 
-1. `read()`: Retrieves the current data from the JSON file as a readonly object
-2. `write(newData)`: Updates the JSON file with new data, validating against the model
-3. `update(propertyPath, newValue)`: Updates a specific property in the JSON file
-4. `delete(propertyPath)`: Deletes a specific property from the JSON file
+1. `read()`: Retrieves the current data from the JSON file
+2. `write(newData)`: Updates the JSON file with new data, validating against the model if provided
+3. `update(propertyPath | object, value?)`: Updates one or multiple properties in the JSON file
+4. `delete(propertyPath | string[])`: Deletes one or multiple properties from the JSON file
 5. `deleteFile()`: Deletes the entire JSON file
 
-If the JSON file doesn't exist, it will be created automatically with the default data structure provided in the constructor.
+Model Validation Examples:
 
-The store validates data against the provided model schema. It can handle:
-- Objects
-- Arrays
-- Primitive types (string, number, boolean)
-
-Example with pre-configured stores:
-
+// Simple model
 ```javascript
-import Store from 'storaje-db';
-```
-
-Initialize stores
-```javascript
-const userStore = new Store('./path/to/user.json', {
+const userModel = {
   id: '',
   username: '',
-  email: ''
+  email: '',
+  age: 0,
+  isActive: false
+};
+
+const userStore = new Store('./users.json', userModel);
+```
+
+// Valid data - passes validation
+```javascript
+await userStore.write({
+  id: '1',
+  username: 'john_doe',
+  email: 'john@example.com',
+  age: 30,
+  isActive: true
 });
 ```
 
-Read from agent store
-```javascript
-const agents = await agentStore.read();
-```
-
-Write to user store
+// Invalid data - fails validation (wrong types)
 ```javascript
 await userStore.write({
-  userId: '123',
-  username: 'john_doe',
-  email: 'john.doe@example.com'
+  id: 1,           // Error: expected string
+  username: true,  // Error: expected string
+  email: '',
+  age: '25',      // Error: expected number
+  isActive: 'yes' // Error: expected boolean
+});
+```
+
+// Complex model with nested objects and arrays
+```javascript
+const productModel = {
+  id: '',
+  name: '',
+  price: 0,
+  categories: [],
+  metadata: {
+    created: '',
+    updated: '',
+    stock: 0
+  }
+};
+
+const productStore = new Store('./products.json', productModel);
+```
+
+// Data will be validated against the model structure and types
+```javascript
+await productStore.write({
+  id: 'prod_1',
+  name: 'Widget',
+  price: 99.99,
+  categories: ['electronics', 'gadgets'],
+  metadata: {
+    created: '2023-01-01',
+    updated: '2023-06-15',
+    stock: 100
+  }
 });
 ```

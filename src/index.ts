@@ -121,16 +121,45 @@ async function deleteJsonFile<T extends Model> ( filePath: string ): Promise<boo
 export class Store<T extends Model> {
   #filePath: string;
   #data: Promise<T>;
+  #model?: Model;
+  #validateData: boolean;
 
-  constructor( filePath: string, fileName: string, defaultData: T = [] as unknown as T ) {
+  constructor(
+    filePath: string,
+    fileName: string,
+    defaultData: T = [] as unknown as T,
+    options: { model?: Model; validateData?: boolean; } = {}
+  ) {
     this.#filePath = filePath + fileName;
     this.#data = readJsonFile<T>( this.#filePath, defaultData );
+    this.#model = options.model;
+    this.#validateData = options.validateData ?? false;
+  }
+
+  private validate ( data: any ): boolean {
+    if ( !this.#validateData || !this.#model ) {
+      return true;
+    }
+    return validateAgainstModel( data, this.#model );
   }
 
   async delete ( propertyPath: string ): Promise<boolean> {
+    const currentData = await this.#data;
+    let tempData = JSON.parse( JSON.stringify( currentData ) );
+
+    const pathParts = propertyPath.split( '.' );
+    let current = tempData;
+    for ( let i = 0; i < pathParts.length - 1; i++ ) {
+      current = current[ pathParts[ i ] ];
+    }
+    delete current[ pathParts[ pathParts.length - 1 ] ];
+
+    if ( !this.validate( tempData ) ) {
+      throw new Error( 'Data validation failed: Resulting data after deletion does not match the specified model' );
+    }
+
     const result = await deleteJsonProperty<T>( this.#filePath, propertyPath );
     if ( result ) {
-      // Update internal cache after deletion
       this.#data = readJsonFile<T>( this.#filePath, await this.#data );
     }
     return result;
@@ -142,34 +171,38 @@ export class Store<T extends Model> {
 
   async read (): Promise<Readonly<T>> {
     const data = await this.#data;
-    // Create a deep copy to prevent mutations
     return JSON.parse( JSON.stringify( data ) );
-    // let dataType;
-    // if ( typeof data === 'object' ) {
-    //   dataType = {};
-    // }
-    // if ( Array.isArray( data ) ) {
-    //   dataType = [];
-    // } else {
-    //   dataType = data;
-    // }
-    // return Object.assign( dataType, data);
   }
 
-  async update ( propertyPath: string, newValue: any ): Promise<boolean> {
-    const result = await updateJsonFileProperty<T>( this.#filePath, propertyPath, newValue );
+  async write ( newData: T ): Promise<boolean> {
+    if ( !this.validate( newData ) ) {
+      throw new Error( 'Data validation failed: Data does not match the specified model' );
+    }
+    const result = await writeJsonFile<T>( this.#filePath, newData );
     if ( result ) {
-      // Update internal cache
-      this.#data = readJsonFile<T>( this.#filePath, await this.#data );
+      this.#data = Promise.resolve( newData );
     }
     return result;
   }
 
-  async write ( newData: T ): Promise<boolean> {
-    const result = await writeJsonFile<T>( this.#filePath, newData );
+  async update ( propertyPath: string, newValue: any ): Promise<boolean> {
+    const currentData = await this.#data;
+    let tempData = JSON.parse( JSON.stringify( currentData ) );
+
+    const pathParts = propertyPath.split( '.' );
+    let current = tempData;
+    for ( let i = 0; i < pathParts.length - 1; i++ ) {
+      current = current[ pathParts[ i ] ];
+    }
+    current[ pathParts[ pathParts.length - 1 ] ] = newValue;
+
+    if ( !this.validate( tempData ) ) {
+      throw new Error( 'Data validation failed: Updated data does not match the specified model' );
+    }
+
+    const result = await updateJsonFileProperty<T>( this.#filePath, propertyPath, newValue );
     if ( result ) {
-      // Update internal cache
-      this.#data = Promise.resolve( newData );
+      this.#data = readJsonFile<T>( this.#filePath, await this.#data );
     }
     return result;
   }

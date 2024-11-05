@@ -3,7 +3,8 @@ StorajeDB is a simple JSON-based storage system with model validation.
 
 ### Installation
 To use StorajeDB, you need to have Node.js installed on your machine. Then, you can install the package using npm:
-```javascript
+
+```powershell
   npm install storaje-db
 ```
 
@@ -14,7 +15,9 @@ import Store from 'storaje-db';
 ```
 
 
-StorajeDB supports optional model validation. You can define a data model to ensure type checking and data validation. If no model is provided, the default data structure is an empty array.
+StorajeDB supports optional model validation. You can define a data model to ensure type checking and data validation. Only properties with defined values are checked during validation. Properties with empty arrays or objects are skipped as no child properties exist within the model to validate against.
+
+If no model is provided, the default data structure is an empty array.
 
 Define an optional data model (recommended):
 
@@ -36,12 +39,12 @@ Initialize store with or without a model:
 
 // With model validation
 ```javascript
-const myStore = new Store('./path/to/file.json', myModel);
+const myStore = new Store('./path/to/directory', 'file.json', myModel);
 ```
 
 // Without model validation (uses empty array as default)
 ```javascript
-const basicStore = new Store('./path/to/file.json');
+const basicStore = new Store('./path/to/directory', 'file.json');
 ```
 
 
@@ -135,7 +138,7 @@ const userModel = {
   isActive: false
 };
 
-const userStore = new Store('./users.json', userModel);
+const userStore = new Store('./', 'users.json', userModel);
 ```
 
 // Valid data - passes validation
@@ -174,7 +177,7 @@ const productModel = {
   }
 };
 
-const productStore = new Store('./products.json', productModel);
+const productStore = new Store('./', 'products.json', productModel);
 ```
 
 // Data will be validated against the model structure and types

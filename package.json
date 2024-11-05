@@ -1,6 +1,6 @@
 {
   "name": "storaje-db",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "A simple JSON-based storage solution for your data.",
   "type": "module",
   "main": "dist/index.js",

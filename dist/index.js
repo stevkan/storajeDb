@@ -22,17 +22,36 @@ var _Store_filePath, _Store_data, _Store_model, _Store_validateData;
 import { promises as fs } from 'fs';
 import path from 'path';
 function validateAgainstModel(data, model) {
-    if (!data || typeof data !== 'object') {
+    // Check required fields
+    if (model.required && Array.isArray(model.required)) {
+        const missingRequired = model.required.some(field => !data.hasOwnProperty(field));
+        if (missingRequired) {
+            return false;
+        }
+    }
+    // For primitive values, check exact type match
+    if (typeof data !== typeof model) {
         return false;
     }
-    return Object.keys(model).every(key => {
-        if (!model[key] ||
-            (typeof model[key] === 'object' && Object.keys(model[key]).length === 0) ||
-            (Array.isArray(model[key]) && model[key].length === 0)) {
-            return true;
-        }
-        return data.hasOwnProperty(key);
-    });
+    // For objects (excluding null)
+    if (typeof data === 'object' && data !== null) {
+        return Object.keys(model).every(key => {
+            // Skip validation if model property is an empty array or object
+            if (data[key] &&
+                typeof data[key] === 'object' &&
+                Object.keys(data[key]).length === 0) {
+                return true;
+            }
+            if (!data.hasOwnProperty(key)) {
+                return false;
+            }
+            if (typeof model[key] === 'object' && model[key] !== null) {
+                return validateAgainstModel(model[key], data[key]);
+            }
+            return typeof model[key] === typeof data[key];
+        });
+    }
+    return true;
 }
 function readJsonFile(filePath, defaultData) {
     return __awaiter(this, void 0, void 0, function* () {

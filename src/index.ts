@@ -1,25 +1,27 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 
+/**
+ * Represents a generic model interface that allows any string key with any value type.
+ * This interface is used for flexible object type definitions where the structure
+ * is not strictly defined at compile time.
+ */
 interface Model {
   [ key: string ]: any;
 }
 
 function validateAgainstModel ( data: any, model: Model ): boolean {
-  if ( Array.isArray( data ) ) {
-    return data.every( item => validateAgainstModel( item, model ) );
+  if ( !data || typeof data !== 'object' ) {
+    return false;
   }
 
-  if ( typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean' ) {
-    return Object.values( model ).includes( data );
-  }
-
-  return Object.keys( data ).every( key => {
-    const isValidKey = model.hasOwnProperty( key );
-    if ( typeof data[ key ] === 'object' && data[ key ] !== null ) {
-      return isValidKey && validateAgainstModel( data[ key ], model[ key ] );
+  return Object.keys( model ).every( key => {
+    if ( !model[ key ] || 
+         ( typeof model[ key ] === 'object' && Object.keys( model[ key ] ).length === 0 ) ||
+         ( Array.isArray( model[ key ] ) && model[ key ].length === 0 ) ) {
+      return true;
     }
-    return isValidKey && typeof data[ key ] === typeof model[ key ];
+    return data.hasOwnProperty( key );
   } );
 }
 
@@ -47,20 +49,22 @@ async function updateJsonFileProperty<T extends Model> ( filePath: string, prope
   try {
     const currentData = await readJsonFile<T>( filePath, {} as T );
     let dataToUpdate = currentData;
-    const pathParts = propertyPath.split( '.' );
-
-    let currentObj: any = currentData;
-    for ( let i = 0; i < pathParts.length - 1; i++ ) {
-      const part = pathParts[ i ];
-      if ( !currentObj[ part ] ) {
-        currentObj[ part ] = {};
+    if ( propertyPath.includes( '.' ) ) {
+      const pathParts = propertyPath.split( '.' );
+      let currentObj: any = currentData;
+      for ( let i = 0; i < pathParts.length - 1; i++ ) {
+        const part = pathParts[ i ];
+        if ( !currentObj[ part ] ) {
+          currentObj[ part ] = {};
+        }
+        currentObj = currentObj[ part ];
       }
-      currentObj = currentObj[ part ];
+      const finalKey = pathParts[ pathParts.length - 1 ];
+      currentObj[ finalKey ] = newValue;
+    } else {
+      dataToUpdate = { ...currentData, [ propertyPath ]: newValue };
     }
-
-    const finalKey = pathParts[ pathParts.length - 1 ];
-    currentObj[ finalKey ] = newValue;
-
+    
     const jsonString = JSON.stringify( dataToUpdate, null, 2 );
     await fs.writeFile( filePath, jsonString, 'utf8' );
     console.log( 'JSON file updated successfully' );
@@ -118,6 +122,26 @@ async function deleteJsonFile<T extends Model> ( filePath: string ): Promise<boo
     throw error;
   }
 }
+
+/**
+ * Interface defining options for configuring a Store instance.
+ * @interface
+ */
+interface StoreOptions {
+  /**
+   * Optional model definition for data validation.
+   * @type {Model | undefined}
+   */
+  model?: Model;
+
+  /**
+   * Flag to enable/disable data validation against the model.
+   * @type {boolean | undefined}
+   * @default false
+   */
+  validateData?: boolean;
+}
+
 export class Store<T extends Model> {
   #filePath: string;
   #data: Promise<T>;
@@ -128,7 +152,7 @@ export class Store<T extends Model> {
     filePath: string,
     fileName: string,
     defaultData: T = [] as unknown as T,
-    options: { model?: Model; validateData?: boolean; } = {}
+    options: StoreOptions = {}
   ) {
     this.#filePath = filePath + fileName;
     this.#data = readJsonFile<T>( this.#filePath, defaultData );

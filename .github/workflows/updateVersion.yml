@@ -16,7 +16,7 @@ jobs:
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 620d354155ac64df287ca41978ed0596
-          filename: version.json
+          filename: versionStorajeDb.json
           label: Version 
           message: ${{ github.ref }}
           color: blue

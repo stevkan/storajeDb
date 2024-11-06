@@ -1,6 +1,22 @@
-- name: Add Badges
-  uses: rocktimsaikia/badge-it@2.0.0
-  with:
-    GITHUB_TOKEN: ${{ secrets.GIST_SECRET }}
-    badges: 'gh_license, gh_version, gh_stars'
-    badge-style: 'flat-square'
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-version-badge:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Update Version Badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 620d354155ac64df287ca41978ed0596
+          filename: versionStorajeDb.json
+          label: Version 
+          message: ${{ github.ref }}
+          color: blue

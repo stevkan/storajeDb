@@ -5,7 +5,7 @@ on:
       - master
 jobs:
   run:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       # You may pin to the exact commit or the version.
       # uses: stefanoeb/jest-action@f9bb23f509cde20ee9b494f0496d1d3323861cc4

@@ -5,7 +5,7 @@ StorajeDB is a simple JSON-based storage system with model validation.
 To use StorajeDB, you need to have Node.js installed on your machine. Then, you can install the package using npm:
 
 ```powershell
-  npm install storaje-db
+  npm install https://github.com/stevkan/storajeDb.git
 ```
 
 ### Usage
@@ -16,6 +16,8 @@ import Store from 'storaje-db';
 
 
 StorajeDB supports optional model validation. You can define a data model to ensure type checking and data validation. Only properties with defined values are checked during validation. Properties with empty arrays or objects are skipped as no child properties exist within the model to validate against.
+
+When specifying a directory path to the JSON file location(s), the file(s) will be created if they don't exist. *Please note:* StorajeDB does not check for
 
 If no model is provided, the default data structure is an empty array.
 
@@ -193,4 +195,16 @@ await productStore.write({
     stock: 100
   }
 });
+```
+
+### Building
+To build the package, run the following command:
+
+From an elevated terminal:
+```powershell
+  npm install
+```
+
+```powershell
+  npm run build
 ```

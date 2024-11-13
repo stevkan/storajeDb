@@ -18,7 +18,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Store_filePath, _Store_data, _Store_model, _Store_validateData;
+var _Store_filePath, _Store_fileName, _Store_data, _Store_model, _Store_validateData;
 import { promises as fs } from 'fs';
 import path from 'path';
 function validateAgainstModel(data, model) {
@@ -53,19 +53,21 @@ function validateAgainstModel(data, model) {
     }
     return true;
 }
-function readJsonFile(filePath, defaultData) {
+function readJsonFile(filePath, fileName, defaultData) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const file = filePath + fileName;
+            const fPath = path.join('./', file);
+            const parsePath = path.parse(fPath);
+            // Create directory if it doesn't exist
+            yield fs.mkdir(parsePath.dir, { recursive: true });
             try {
-                yield fs.access(filePath);
-                const data = yield fs.readFile(filePath, 'utf8');
-                // console.log( '1 DATA ', data );
+                yield fs.access(file, fs.constants.F_OK);
+                const data = yield fs.readFile(file, 'utf8');
                 return JSON.parse(data);
             }
             catch (_a) {
                 const jsonString = JSON.stringify(defaultData, null, 2);
-                const fPath = path.join('./', filePath);
-                const parsePath = path.parse(fPath);
                 yield fs.writeFile(`${parsePath.dir}/${parsePath.base}`, jsonString, 'utf8');
                 return defaultData;
             }
@@ -76,10 +78,14 @@ function readJsonFile(filePath, defaultData) {
         }
     });
 }
-function updateJsonFileProperty(filePath, propertyPath, newValue) {
+function updateJsonFileProperty(filePath, fileName, propertyPath, newValue) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const currentData = yield readJsonFile(filePath, {});
+            const fullPath = path.join(filePath, fileName);
+            const parsePath = path.parse(fullPath);
+            // Create directory if it doesn't exist
+            yield fs.mkdir(parsePath.dir, { recursive: true });
+            const currentData = yield readJsonFile(filePath, fileName, {});
             let dataToUpdate = currentData;
             if (propertyPath.includes('.')) {
                 const pathParts = propertyPath.split('.');
@@ -98,7 +104,7 @@ function updateJsonFileProperty(filePath, propertyPath, newValue) {
                 dataToUpdate = Object.assign(Object.assign({}, currentData), { [propertyPath]: newValue });
             }
             const jsonString = JSON.stringify(dataToUpdate, null, 2);
-            yield fs.writeFile(filePath, jsonString, 'utf8');
+            yield fs.writeFile(fullPath, jsonString, 'utf8');
             console.log('JSON file updated successfully');
             return true;
         }
@@ -108,11 +114,15 @@ function updateJsonFileProperty(filePath, propertyPath, newValue) {
         }
     });
 }
-function writeJsonFile(filePath, newData) {
+function writeJsonFile(filePath, fileName, newData) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const fullPath = path.join(filePath, fileName);
+            const parsePath = path.parse(fullPath);
+            // Create directory if it doesn't exist
+            yield fs.mkdir(parsePath.dir, { recursive: true });
             const jsonString = JSON.stringify(newData, null, 2);
-            yield fs.writeFile(filePath, jsonString, 'utf8');
+            yield fs.writeFile(fullPath, jsonString, 'utf8');
             console.log('JSON file updated successfully');
             return true;
         }
@@ -122,10 +132,10 @@ function writeJsonFile(filePath, newData) {
         }
     });
 }
-function deleteJsonProperty(filePath, propertyPath) {
+function deleteJsonProperty(filePath, fileName, propertyPath) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const currentData = yield readJsonFile(filePath, {});
+            const currentData = yield readJsonFile(filePath, fileName, {});
             let dataToUpdate = currentData;
             const pathParts = propertyPath.split('.');
             let currentObj = currentData;
@@ -149,10 +159,11 @@ function deleteJsonProperty(filePath, propertyPath) {
         }
     });
 }
-function deleteJsonFile(filePath) {
+function deleteJsonFile(filePath, fileName) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            yield fs.unlink(filePath);
+            const file = filePath + fileName;
+            yield fs.unlink(file);
             console.log('JSON file deleted successfully');
             return true;
         }
@@ -166,11 +177,13 @@ export class Store {
     constructor(filePath, fileName, defaultData = [], options = {}) {
         var _a;
         _Store_filePath.set(this, void 0);
+        _Store_fileName.set(this, void 0);
         _Store_data.set(this, void 0);
         _Store_model.set(this, void 0);
         _Store_validateData.set(this, void 0);
-        __classPrivateFieldSet(this, _Store_filePath, filePath + fileName, "f");
-        __classPrivateFieldSet(this, _Store_data, readJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), defaultData), "f");
+        __classPrivateFieldSet(this, _Store_filePath, filePath, "f");
+        __classPrivateFieldSet(this, _Store_fileName, fileName, "f");
+        __classPrivateFieldSet(this, _Store_data, readJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), __classPrivateFieldGet(this, _Store_fileName, "f"), defaultData), "f");
         __classPrivateFieldSet(this, _Store_model, options.model, "f");
         __classPrivateFieldSet(this, _Store_validateData, (_a = options.validateData) !== null && _a !== void 0 ? _a : false, "f");
     }
@@ -193,16 +206,16 @@ export class Store {
             if (!this.validate(tempData)) {
                 throw new Error('Data validation failed: Resulting data after deletion does not match the specified model');
             }
-            const result = yield deleteJsonProperty(__classPrivateFieldGet(this, _Store_filePath, "f"), propertyPath);
+            const result = yield deleteJsonProperty(__classPrivateFieldGet(this, _Store_filePath, "f"), __classPrivateFieldGet(this, _Store_fileName, "f"), propertyPath);
             if (result) {
-                __classPrivateFieldSet(this, _Store_data, readJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), yield __classPrivateFieldGet(this, _Store_data, "f")), "f");
+                __classPrivateFieldSet(this, _Store_data, readJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), __classPrivateFieldGet(this, _Store_fileName, "f"), yield __classPrivateFieldGet(this, _Store_data, "f")), "f");
             }
             return result;
         });
     }
     deleteFile() {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield deleteJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"));
+            return yield deleteJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), __classPrivateFieldGet(this, _Store_fileName, "f"));
         });
     }
     read() {
@@ -216,7 +229,7 @@ export class Store {
             if (!this.validate(newData)) {
                 throw new Error('Data validation failed: Data does not match the specified model');
             }
-            const result = yield writeJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), newData);
+            const result = yield writeJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), __classPrivateFieldGet(this, _Store_fileName, "f"), newData);
             if (result) {
                 __classPrivateFieldSet(this, _Store_data, Promise.resolve(newData), "f");
             }
@@ -236,13 +249,13 @@ export class Store {
             if (!this.validate(tempData)) {
                 throw new Error('Data validation failed: Updated data does not match the specified model');
             }
-            const result = yield updateJsonFileProperty(__classPrivateFieldGet(this, _Store_filePath, "f"), propertyPath, newValue);
+            const result = yield updateJsonFileProperty(__classPrivateFieldGet(this, _Store_filePath, "f"), __classPrivateFieldGet(this, _Store_fileName, "f"), propertyPath, newValue);
             if (result) {
-                __classPrivateFieldSet(this, _Store_data, readJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), yield __classPrivateFieldGet(this, _Store_data, "f")), "f");
+                __classPrivateFieldSet(this, _Store_data, readJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), __classPrivateFieldGet(this, _Store_fileName, "f"), yield __classPrivateFieldGet(this, _Store_data, "f")), "f");
             }
             return result;
         });
     }
 }
-_Store_filePath = new WeakMap(), _Store_data = new WeakMap(), _Store_model = new WeakMap(), _Store_validateData = new WeakMap();
+_Store_filePath = new WeakMap(), _Store_fileName = new WeakMap(), _Store_data = new WeakMap(), _Store_model = new WeakMap(), _Store_validateData = new WeakMap();
 //# sourceMappingURL=index.js.map

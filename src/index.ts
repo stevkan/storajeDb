@@ -49,17 +49,18 @@ function validateAgainstModel ( data: any, model: Model ): boolean {
   return true;
 }
 
-async function readJsonFile<T> ( filePath: string, defaultData: T ): Promise<any> {
+async function readJsonFile<T> ( filePath: string, fileName: string, defaultData: T ): Promise<any> {
   try {
-    const fPath = path.join( './', filePath );
+    const file = filePath + fileName;
+    const fPath = path.join( './', file );
     const parsePath = path.parse( fPath );
     
     // Create directory if it doesn't exist
     await fs.mkdir( parsePath.dir, { recursive: true } );
 
     try {
-      await fs.access( filePath );
-      const data = await fs.readFile( filePath, 'utf8' );
+      await fs.access( file, fs.constants.F_OK );
+      const data = await fs.readFile( file, 'utf8' );
       return JSON.parse( data );
     } catch {
       const jsonString = JSON.stringify( defaultData, null, 2 );
@@ -72,10 +73,17 @@ async function readJsonFile<T> ( filePath: string, defaultData: T ): Promise<any
   }
 }
 
-async function updateJsonFileProperty<T extends Model> ( filePath: string, propertyPath: string, newValue: any ): Promise<boolean> {
+async function updateJsonFileProperty<T extends Model> ( filePath: string, fileName: string, propertyPath: string, newValue: any ): Promise<boolean> {
   try {
-    const currentData = await readJsonFile<T>( filePath, {} as T );
+    const fullPath = path.join( filePath, fileName );
+    const parsePath = path.parse( fullPath );
+
+    // Create directory if it doesn't exist
+    await fs.mkdir( parsePath.dir, { recursive: true } );
+
+    const currentData = await readJsonFile<T>( filePath, fileName, {} as T );
     let dataToUpdate = currentData;
+
     if ( propertyPath.includes( '.' ) ) {
       const pathParts = propertyPath.split( '.' );
       let currentObj: any = currentData;
@@ -91,9 +99,9 @@ async function updateJsonFileProperty<T extends Model> ( filePath: string, prope
     } else {
       dataToUpdate = { ...currentData, [ propertyPath ]: newValue };
     }
-    
+
     const jsonString = JSON.stringify( dataToUpdate, null, 2 );
-    await fs.writeFile( filePath, jsonString, 'utf8' );
+    await fs.writeFile( fullPath, jsonString, 'utf8' );
     console.log( 'JSON file updated successfully' );
     return true;
   } catch ( error ) {
@@ -102,10 +110,16 @@ async function updateJsonFileProperty<T extends Model> ( filePath: string, prope
   }
 }
 
-async function writeJsonFile<T extends Model> ( filePath: string, newData: T ): Promise<boolean> {
+async function writeJsonFile<T extends Model> ( filePath: string, fileName: string, newData: T ): Promise<boolean> {
   try {
+    const fullPath = path.join( filePath, fileName );
+    const parsePath = path.parse( fullPath );
+
+    // Create directory if it doesn't exist
+    await fs.mkdir( parsePath.dir, { recursive: true } );
+
     const jsonString = JSON.stringify( newData, null, 2 );
-    await fs.writeFile( filePath, jsonString, 'utf8' );
+    await fs.writeFile( fullPath, jsonString, 'utf8' );
     console.log( 'JSON file updated successfully' );
     return true;
   } catch ( error ) {
@@ -114,9 +128,9 @@ async function writeJsonFile<T extends Model> ( filePath: string, newData: T ): 
   }
 }
 
-async function deleteJsonProperty<T extends Model> ( filePath: string, propertyPath: string ): Promise<boolean> {
+async function deleteJsonProperty<T extends Model> ( filePath: string, fileName: string, propertyPath: string ): Promise<boolean> {
   try {
-    const currentData = await readJsonFile<T>( filePath, {} as T );
+    const currentData = await readJsonFile<T>( filePath, fileName, {} as T );
     let dataToUpdate = currentData;
     const pathParts = propertyPath.split( '.' );
     let currentObj: any = currentData;
@@ -139,9 +153,10 @@ async function deleteJsonProperty<T extends Model> ( filePath: string, propertyP
   }
 }
 
-async function deleteJsonFile<T extends Model> ( filePath: string ): Promise<boolean> {
+async function deleteJsonFile<T extends Model> ( filePath: string, fileName: string ): Promise<boolean> {
   try {
-    await fs.unlink( filePath );
+    const file = filePath + fileName;
+    await fs.unlink( file );
     console.log( 'JSON file deleted successfully' );
     return true;
   } catch ( error ) {
@@ -171,6 +186,7 @@ interface StoreOptions {
 
 export class Store<T extends Model> {
   #filePath: string;
+  #fileName: string;
   #data: Promise<T>;
   #model?: Model;
   #validateData: boolean;
@@ -181,8 +197,9 @@ export class Store<T extends Model> {
     defaultData: T = [] as unknown as T,
     options: StoreOptions = {}
   ) {
-    this.#filePath = filePath + fileName;
-    this.#data = readJsonFile<T>( this.#filePath, defaultData );
+    this.#filePath = filePath;
+    this.#fileName = fileName;
+    this.#data = readJsonFile<T>( this.#filePath, this.#fileName, defaultData );
     this.#model = options.model;
     this.#validateData = options.validateData ?? false;
   }
@@ -209,15 +226,15 @@ export class Store<T extends Model> {
       throw new Error( 'Data validation failed: Resulting data after deletion does not match the specified model' );
     }
 
-    const result = await deleteJsonProperty<T>( this.#filePath, propertyPath );
+    const result = await deleteJsonProperty<T>( this.#filePath, this.#fileName, propertyPath );
     if ( result ) {
-      this.#data = readJsonFile<T>( this.#filePath, await this.#data );
+      this.#data = readJsonFile<T>( this.#filePath, this.#fileName, await this.#data );
     }
     return result;
   }
 
   async deleteFile (): Promise<boolean> {
-    return await deleteJsonFile<T>( this.#filePath );
+    return await deleteJsonFile<T>( this.#filePath, this.#fileName );
   }
 
   async read (): Promise<Readonly<T>> {
@@ -229,7 +246,7 @@ export class Store<T extends Model> {
     if ( !this.validate( newData ) ) {
       throw new Error( 'Data validation failed: Data does not match the specified model' );
     }
-    const result = await writeJsonFile<T>( this.#filePath, newData );
+    const result = await writeJsonFile<T>( this.#filePath, this.#fileName, newData );
     if ( result ) {
       this.#data = Promise.resolve( newData );
     }
@@ -251,9 +268,9 @@ export class Store<T extends Model> {
       throw new Error( 'Data validation failed: Updated data does not match the specified model' );
     }
 
-    const result = await updateJsonFileProperty<T>( this.#filePath, propertyPath, newValue );
+    const result = await updateJsonFileProperty<T>( this.#filePath, this.#fileName, propertyPath, newValue );
     if ( result ) {
-      this.#data = readJsonFile<T>( this.#filePath, await this.#data );
+      this.#data = readJsonFile<T>( this.#filePath, this.#fileName, await this.#data );
     }
     return result;
   }

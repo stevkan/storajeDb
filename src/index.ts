@@ -51,15 +51,18 @@ function validateAgainstModel ( data: any, model: Model ): boolean {
 
 async function readJsonFile<T> ( filePath: string, defaultData: T ): Promise<any> {
   try {
+    const fPath = path.join( './', filePath );
+    const parsePath = path.parse( fPath );
+    
+    // Create directory if it doesn't exist
+    await fs.mkdir( parsePath.dir, { recursive: true } );
+
     try {
       await fs.access( filePath );
       const data = await fs.readFile( filePath, 'utf8' );
-      // console.log( '1 DATA ', data );
       return JSON.parse( data );
     } catch {
       const jsonString = JSON.stringify( defaultData, null, 2 );
-      const fPath = path.join( './', filePath );
-      const parsePath = path.parse( fPath );
       await fs.writeFile( `${parsePath.dir}/${parsePath.base}`, jsonString, 'utf8' );
       return defaultData;
     }

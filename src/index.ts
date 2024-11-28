@@ -253,25 +253,39 @@ export class Store<T extends Model> {
     return result;
   }
 
-  async update ( propertyPath: string, newValue: any ): Promise<boolean> {
+  async update(propertyPath: string | number, newValue: any): Promise<boolean> {
     const currentData = await this.#data;
-    let tempData = JSON.parse( JSON.stringify( currentData ) );
+    let tempData = JSON.parse(JSON.stringify(currentData));
 
-    const pathParts = propertyPath.split( '.' );
-    let current = tempData;
-    for ( let i = 0; i < pathParts.length - 1; i++ ) {
-      current = current[ pathParts[ i ] ];
+    if (Array.isArray(tempData)) {
+      if (typeof propertyPath === 'number') {
+        tempData[propertyPath] = newValue;
+      } else {
+        const pathParts = propertyPath.split('.');
+        let current: any = tempData;
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          current = current[pathParts[i]];
+        }
+        current[pathParts[pathParts.length - 1]] = newValue;
+      }
+    } else {
+      const pathParts = propertyPath.toString().split('.');
+      let current: any = tempData;
+      for (let i = 0; i < pathParts.length - 1; i++) {
+        current = current[pathParts[i]];
+      }
+      current[pathParts[pathParts.length - 1]] = newValue;
     }
-    current[ pathParts[ pathParts.length - 1 ] ] = newValue;
 
-    if ( !this.validate( tempData ) ) {
-      throw new Error( 'Data validation failed: Updated data does not match the specified model' );
+    if (!this.validate(tempData)) {
+      throw new Error('Data validation failed: Updated data does not match the specified model');
     }
 
-    const result = await updateJsonFileProperty<T>( this.#filePath, this.#fileName, propertyPath, newValue );
-    if ( result ) {
-      this.#data = readJsonFile<T>( this.#filePath, this.#fileName, await this.#data );
+    const result = await writeJsonFile<T>(this.#filePath, this.#fileName, tempData);
+    if (result) {
+      this.#data = Promise.resolve(tempData);
     }
     return result;
   }
+
 }

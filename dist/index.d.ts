@@ -27,10 +27,10 @@ export declare class Store<T extends Model> {
     #private;
     constructor(filePath: string, fileName: string, defaultData?: T, options?: StoreOptions);
     private validate;
-    delete(propertyPath: string): Promise<boolean>;
+    delete(propertyPath: string | number): Promise<boolean>;
     deleteFile(): Promise<boolean>;
     read(): Promise<Readonly<T>>;
     write(newData: T): Promise<boolean>;
-    update(propertyPath: string, newValue: any): Promise<boolean>;
+    update(propertyPath: string | number, newValue: any): Promise<boolean>;
 }
 export {};

@@ -19,6 +19,13 @@ function validateAgainstModel ( data: any, model: Model ): boolean {
     }
   }
 
+  for ( const key in model ) {
+    if ( !data.hasOwnProperty( key ) ) {
+      console.log( `Missing required property: ${ key }` );
+      return false;
+    }
+  }
+
   // For primitive values, check exact type match
   if ( typeof data !== typeof model ) {
     return false;
@@ -69,12 +76,20 @@ async function readJsonFile<T> ( filePath: string, defaultData: T ): Promise<any
   }
 }
 
-async function updateJsonFileProperty<T extends Model> ( filePath: string, propertyPath: string, newValue: any ): Promise<boolean> {
+async function updateJsonFileProperty<T extends Model> ( filePath: string, propertyPath: string | number, newValue: any ): Promise<boolean> {
   try {
     const currentData = await readJsonFile<T>( filePath, {} as T );
     let dataToUpdate = currentData;
-    if ( propertyPath.includes( '.' ) ) {
-      const pathParts = propertyPath.split( '.' );
+    const path = String( propertyPath );
+
+    if ( Array.isArray( currentData ) ) {
+      // Handle array indices
+      const index = parseInt( path );
+      if ( !isNaN( index ) ) {
+        dataToUpdate[ index ] = newValue;
+      }
+    } else if ( path && path.includes( '.' ) ) {
+      const pathParts = path.split( '.' );
       let currentObj: any = currentData;
       for ( let i = 0; i < pathParts.length - 1; i++ ) {
         const part = pathParts[ i ];
@@ -86,12 +101,11 @@ async function updateJsonFileProperty<T extends Model> ( filePath: string, prope
       const finalKey = pathParts[ pathParts.length - 1 ];
       currentObj[ finalKey ] = newValue;
     } else {
-      dataToUpdate = { ...currentData, [ propertyPath ]: newValue };
+      dataToUpdate = { ...currentData, [ path ]: newValue };
     }
-    
+
     const jsonString = JSON.stringify( dataToUpdate, null, 2 );
     await fs.writeFile( filePath, jsonString, 'utf8' );
-    console.log( 'JSON file updated successfully' );
     return true;
   } catch ( error ) {
     console.error( 'Error updating JSON file:', error );
@@ -191,11 +205,12 @@ export class Store<T extends Model> {
     return validateAgainstModel( data, this.#model );
   }
 
-  async delete ( propertyPath: string ): Promise<boolean> {
+  async delete ( propertyPath: string | number ): Promise<boolean> {
+    const path = String( propertyPath );
     const currentData = await this.#data;
     let tempData = JSON.parse( JSON.stringify( currentData ) );
 
-    const pathParts = propertyPath.split( '.' );
+    const pathParts = path.split( '.' );
     let current = tempData;
     for ( let i = 0; i < pathParts.length - 1; i++ ) {
       current = current[ pathParts[ i ] ];
@@ -206,13 +221,13 @@ export class Store<T extends Model> {
       throw new Error( 'Data validation failed: Resulting data after deletion does not match the specified model' );
     }
 
-    const result = await deleteJsonProperty<T>( this.#filePath, propertyPath );
+    const result = await deleteJsonProperty<T>( this.#filePath, path );
     if ( result ) {
       this.#data = readJsonFile<T>( this.#filePath, await this.#data );
     }
     return result;
   }
-
+  
   async deleteFile (): Promise<boolean> {
     return await deleteJsonFile<T>( this.#filePath );
   }
@@ -233,24 +248,25 @@ export class Store<T extends Model> {
     return result;
   }
 
-  async update ( propertyPath: string, newValue: any ): Promise<boolean> {
+  async update(propertyPath: string | number, newValue: any): Promise<boolean> {
+    const path = String(propertyPath);
     const currentData = await this.#data;
-    let tempData = JSON.parse( JSON.stringify( currentData ) );
+    let tempData = JSON.parse(JSON.stringify(currentData));
 
-    const pathParts = propertyPath.split( '.' );
+    const pathParts = path.split('.');
     let current = tempData;
-    for ( let i = 0; i < pathParts.length - 1; i++ ) {
-      current = current[ pathParts[ i ] ];
+    for (let i = 0; i < pathParts.length - 1; i++) {
+      current = current[pathParts[i]];
     }
-    current[ pathParts[ pathParts.length - 1 ] ] = newValue;
+    current[pathParts[pathParts.length - 1]] = newValue;
 
-    if ( !this.validate( tempData ) ) {
-      throw new Error( 'Data validation failed: Updated data does not match the specified model' );
+    if (!this.validate(tempData)) {
+      throw new Error('Data validation failed: Updated data does not match the specified model');
     }
 
-    const result = await updateJsonFileProperty<T>( this.#filePath, propertyPath, newValue );
-    if ( result ) {
-      this.#data = readJsonFile<T>( this.#filePath, await this.#data );
+    const result = await updateJsonFileProperty<T>(this.#filePath, path, newValue);
+    if (result) {
+      this.#data = readJsonFile<T>(this.#filePath, await this.#data);
     }
     return result;
   }

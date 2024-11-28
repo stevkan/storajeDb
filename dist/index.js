@@ -29,6 +29,12 @@ function validateAgainstModel(data, model) {
             return false;
         }
     }
+    for (const key in model) {
+        if (!data.hasOwnProperty(key)) {
+            console.log(`Missing required property: ${key}`);
+            return false;
+        }
+    }
     // For primitive values, check exact type match
     if (typeof data !== typeof model) {
         return false;
@@ -81,8 +87,16 @@ function updateJsonFileProperty(filePath, propertyPath, newValue) {
         try {
             const currentData = yield readJsonFile(filePath, {});
             let dataToUpdate = currentData;
-            if (propertyPath.includes('.')) {
-                const pathParts = propertyPath.split('.');
+            const path = String(propertyPath);
+            if (Array.isArray(currentData)) {
+                // Handle array indices
+                const index = parseInt(path);
+                if (!isNaN(index)) {
+                    dataToUpdate[index] = newValue;
+                }
+            }
+            else if (path && path.includes('.')) {
+                const pathParts = path.split('.');
                 let currentObj = currentData;
                 for (let i = 0; i < pathParts.length - 1; i++) {
                     const part = pathParts[i];
@@ -95,11 +109,10 @@ function updateJsonFileProperty(filePath, propertyPath, newValue) {
                 currentObj[finalKey] = newValue;
             }
             else {
-                dataToUpdate = Object.assign(Object.assign({}, currentData), { [propertyPath]: newValue });
+                dataToUpdate = Object.assign(Object.assign({}, currentData), { [path]: newValue });
             }
             const jsonString = JSON.stringify(dataToUpdate, null, 2);
             yield fs.writeFile(filePath, jsonString, 'utf8');
-            console.log('JSON file updated successfully');
             return true;
         }
         catch (error) {
@@ -182,9 +195,10 @@ export class Store {
     }
     delete(propertyPath) {
         return __awaiter(this, void 0, void 0, function* () {
+            const path = String(propertyPath);
             const currentData = yield __classPrivateFieldGet(this, _Store_data, "f");
             let tempData = JSON.parse(JSON.stringify(currentData));
-            const pathParts = propertyPath.split('.');
+            const pathParts = path.split('.');
             let current = tempData;
             for (let i = 0; i < pathParts.length - 1; i++) {
                 current = current[pathParts[i]];
@@ -193,7 +207,7 @@ export class Store {
             if (!this.validate(tempData)) {
                 throw new Error('Data validation failed: Resulting data after deletion does not match the specified model');
             }
-            const result = yield deleteJsonProperty(__classPrivateFieldGet(this, _Store_filePath, "f"), propertyPath);
+            const result = yield deleteJsonProperty(__classPrivateFieldGet(this, _Store_filePath, "f"), path);
             if (result) {
                 __classPrivateFieldSet(this, _Store_data, readJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), yield __classPrivateFieldGet(this, _Store_data, "f")), "f");
             }
@@ -225,9 +239,10 @@ export class Store {
     }
     update(propertyPath, newValue) {
         return __awaiter(this, void 0, void 0, function* () {
+            const path = String(propertyPath);
             const currentData = yield __classPrivateFieldGet(this, _Store_data, "f");
             let tempData = JSON.parse(JSON.stringify(currentData));
-            const pathParts = propertyPath.split('.');
+            const pathParts = path.split('.');
             let current = tempData;
             for (let i = 0; i < pathParts.length - 1; i++) {
                 current = current[pathParts[i]];
@@ -236,7 +251,7 @@ export class Store {
             if (!this.validate(tempData)) {
                 throw new Error('Data validation failed: Updated data does not match the specified model');
             }
-            const result = yield updateJsonFileProperty(__classPrivateFieldGet(this, _Store_filePath, "f"), propertyPath, newValue);
+            const result = yield updateJsonFileProperty(__classPrivateFieldGet(this, _Store_filePath, "f"), path, newValue);
             if (result) {
                 __classPrivateFieldSet(this, _Store_data, readJsonFile(__classPrivateFieldGet(this, _Store_filePath, "f"), yield __classPrivateFieldGet(this, _Store_data, "f")), "f");
             }
